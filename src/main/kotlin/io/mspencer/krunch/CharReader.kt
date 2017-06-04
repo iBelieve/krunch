@@ -8,9 +8,17 @@ data class CharReader(val source: CharSequence, override val index: Int = 0) : R
 
     override fun remainder(nextIndex: Int) = CharReader(source, nextIndex)
 
-    fun skipWhitespace(): CharReader {
+    fun skipWhitespace(onlyCurrentLine: Boolean = false): CharReader {
         var nextIndex = index
-        while (nextIndex < source.length && source[nextIndex].isWhitespace()) nextIndex++
+        val shouldSkip = { it: Int ->
+            if (onlyCurrentLine && nextIndex > 0 && source[it - 1] == '\n') {
+                false
+            } else {
+                source[it].isWhitespace()
+            }
+        }
+
+        while (nextIndex < source.length && shouldSkip(nextIndex)) nextIndex++
 
         return remainder(nextIndex)
     }

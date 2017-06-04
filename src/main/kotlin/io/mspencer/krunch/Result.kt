@@ -8,8 +8,14 @@ sealed class Result<R : Reader<R, *>, out T> {
     abstract val index: Int
 
     fun <U> cast() = this as (Result<R, U>)
+
     fun <U> map(map: (T) -> U): Result<R, U> = when (this) {
-        is Ok -> Result.Ok(map(matched), index, remainder)
+        is Ok -> Result.Ok(matched.let(map), index, remainder)
+        else -> this.cast()
+    }
+
+    fun also(also: (T) -> Unit): Result<R, T> = when (this) {
+        is Ok -> Result.Ok(matched.also(also), index, remainder)
         else -> this.cast()
     }
 }

@@ -14,7 +14,7 @@ data class Position(val sourceLine: String, val line: Int, val column: Int) {
             var col = 1
             var lineIndex = 0
 
-            while (c <= index) {
+            while (c < index) {
                 if (charSequence[c] == '\n') {
                     lineIndex = c + 1
                     line++

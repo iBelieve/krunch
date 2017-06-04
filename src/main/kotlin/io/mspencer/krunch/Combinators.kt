@@ -1,5 +1,6 @@
 package io.mspencer.krunch
 
+import io.mspencer.krunch.extensions.prepended
 import java.util.*
 
 infix fun <R : Reader<R, *>, A, B> Parser<R, A>.and(other: Parser<R, B>) = BlockParser<R, Pair<A, B>> { input ->
@@ -44,10 +45,11 @@ infix fun <R : Reader<R, *>, A, B> Parser<R, A>.before(other: Parser<R, B>) = Bl
 }
 
 infix fun <R : Reader<R, *>, A, B> Parser<R, A>.map(map: (A) -> B) = BlockParser<R, B> { input ->
-    val result1 = this.apply(input)
-    if (result1 !is Result.Ok) return@BlockParser result1.cast()
+    this.apply(input).map(map)
+}
 
-    Result.Ok(map(result1.matched), result1.index, result1.remainder)
+infix fun <R : Reader<R, *>, A> Parser<R, A>.also(also: (A) -> Unit) = BlockParser<R, A> { input ->
+    this.apply(input).also(also)
 }
 
 fun <R: Reader<R, *>, A, B, C>Parser<R, A>.between(left: Parser<R, B>, right: Parser<R, C>) = BlockParser<R, A> {
@@ -94,6 +96,23 @@ fun <R: Reader<R, *>, A> optional(parser: Parser<R, A>) = BlockParser<R, A?> { i
             else -> it
         }
     }
+}
+
+
+infix fun <R: Reader<R, *>, A> Parser<R, A?>.prepended(other: Parser<R, List<A>>) = BlockParser<R, List<A>> { input ->
+    val result1 = this.apply(input)
+    if (result1 !is Result.Ok) return@BlockParser result1.cast()
+
+    val result2 = other.apply(result1.remainder)
+    if (result2 !is Result.Ok) return@BlockParser result2.cast()
+
+    val value = if (result1.matched !is Unit && result1.matched != null) {
+        result2.matched.prepended(result1.matched)
+    } else {
+        result2.matched
+    }
+
+    Result.Ok(value, result1.index, result2.remainder)
 }
 
 fun <R: Reader<R, *>, A> repeat(times: Int, parser: Parser<R, A>) = BlockParser<R, List<A>> { input ->
