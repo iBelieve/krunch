@@ -1,5 +1,5 @@
 package io.mspencer.krunch
 
-interface Parser<out A> {
-    fun apply(input: ParserInput): Result<A>
+interface Parser<R : Reader<R, *>, out A> {
+    fun apply(input: R): Result<R, A>
 }

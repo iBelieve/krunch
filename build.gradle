@@ -9,15 +9,35 @@ buildscript {
     }
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'org.junit.platform:junit-platform-gradle-plugin:1.0.0-M4'
     }
 }
 
 apply plugin: 'kotlin'
+apply plugin: 'org.junit.platform.gradle.plugin'
+
+
+junitPlatform {
+    filters {
+        engines {
+            include 'spek'
+        }
+    }
+}
 
 repositories {
     mavenCentral()
+    jcenter()
+    maven { url "http://dl.bintray.com/jetbrains/spek" }
 }
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
+    compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
+
+    // Test dependencies
+    testCompile 'org.jetbrains.spek:spek-api:1.1.2'
+    testRuntime 'org.jetbrains.spek:spek-junit-platform-engine:1.1.2'
+    testRuntime 'org.junit.platform:junit-platform-launcher:1.0.0-M4'
+    testCompile 'org.amshove.kluent:kluent:1.22'
 }
