@@ -6,7 +6,7 @@ abstract class TokenParsers<T : Token, out U> : Parsers() {
     abstract val lexer: (String) -> Lexer<T>
     abstract val goal: Parser<TokenReader<T>, U>
 
-    val endOfFile = BlockParser<TokenReader<T>, Unit> { input ->
+    val endOfFile = BlockParser<TokenReader<T>, Unit>(false) { input ->
         if (input.atEnd) {
             Result.Ok(Unit, input.index, input)
         } else {
@@ -19,13 +19,13 @@ abstract class TokenParsers<T : Token, out U> : Parsers() {
 
     fun <A, B : T, C : T> Parser<TokenReader<T>, A>.between(left: KClass<B>, right: KClass<C>) = token(left) then this before token(right)
 
-    fun <A : T>oneOf(vararg tokens: A) = io.mspencer.krunch.oneOf(tokens.map { token(it) })
+    fun <A : T> oneOf(vararg tokens: A) = io.mspencer.krunch.oneOf(tokens.map { token(it) })
 
-    fun <A : T> token(type: KClass<A>) = BlockParser<TokenReader<T>, A> { input ->
+    fun <A : T> token(type: KClass<A>) = BlockParser<TokenReader<T>, A>(false) { input ->
         input.take(type)
     }
 
-    fun <A : T>token(token: A) = BlockParser<TokenReader<T>, A> { input ->
+    fun <A : T> token(token: A) = BlockParser<TokenReader<T>, A>(false) { input ->
         input.take(token)
     }
 

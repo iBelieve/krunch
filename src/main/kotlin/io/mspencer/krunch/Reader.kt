@@ -2,7 +2,7 @@ package io.mspencer.krunch
 
 import kotlin.reflect.KClass
 
-interface Reader<Self: Reader<Self, T>, T : Any> {
+interface Reader<Self : Reader<Self, T>, T : Any> {
     val atEnd: Boolean
     val index: Int
 
@@ -36,10 +36,10 @@ interface Reader<Self: Reader<Self, T>, T : Any> {
         }
     }
 
-    fun <A : T>take(expected: A): Result<Self, A> {
+    fun <A : T> take(expected: A): Result<Self, A> {
         return next().let {
             when (it) {
-                is Result.Ok -> when(it.matched) {
+                is Result.Ok -> when (it.matched) {
                     expected -> it.cast()
                     else -> fail("Expected '$expected', got: '${it.matched}")
                 }
@@ -48,7 +48,7 @@ interface Reader<Self: Reader<Self, T>, T : Any> {
         }
     }
 
-    fun <A : T>take(type: KClass<A>): Result<Self, A> {
+    fun <A : T> take(type: KClass<A>): Result<Self, A> {
         return next().let {
             when (it) {
                 is Result.Ok -> when (it.matched::class) {

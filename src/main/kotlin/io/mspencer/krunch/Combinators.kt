@@ -3,17 +3,18 @@ package io.mspencer.krunch
 import io.mspencer.krunch.extensions.prepended
 import java.util.*
 
-infix fun <R : Reader<R, *>, A, B> Parser<R, A>.and(other: Parser<R, B>) = BlockParser<R, Pair<A, B>> { input ->
+infix fun <R : Reader<R, *>, A, B> Parser<R, A>.and(other: Parser<R, B>) = BlockParser<R, Pair<A, B>>(unique || other.unique) { input ->
     val result1 = this.apply(input)
     if (result1 !is Result.Ok) return@BlockParser result1.cast()
 
     val result2 = other.apply(result1.remainder)
+    if (unique && result2 is Result.Failure) return@BlockParser result2.error()
     if (result2 !is Result.Ok) return@BlockParser result2.cast()
 
     Result.Ok(Pair(result1.matched, result2.matched), result1.index, result2.remainder)
 }
 
-infix fun <R : Reader<R, *>, A, B> Parser<R, A>.or(other: Parser<R, B>) = BlockParser<R, Any?> { input ->
+infix fun <R : Reader<R, *>, A> Parser<R, A>.or(other: Parser<R, A>) = BlockParser<R, A>(false) { input ->
     val result1 = this.apply(input)
     if (result1 !is Result.Failure) return@BlockParser result1
 
@@ -27,32 +28,36 @@ infix fun <R : Reader<R, *>, A, B> Parser<R, A>.or(other: Parser<R, B>) = BlockP
     }
 }
 
-infix fun <R : Reader<R, *>, A, B> Parser<R, A>.then(other: Parser<R, B>) = BlockParser<R, B> { input ->
-    val result1 = this.apply(input)
-    if (result1 !is Result.Ok) return@BlockParser result1.cast()
-
-    other.apply(result1.remainder)
-}
-
-infix fun <R : Reader<R, *>, A, B> Parser<R, A>.before(other: Parser<R, B>) = BlockParser<R, A> { input ->
+infix fun <R : Reader<R, *>, A, B> Parser<R, A>.then(other: Parser<R, B>) = BlockParser<R, B>(unique || other.unique) { input ->
     val result1 = this.apply(input)
     if (result1 !is Result.Ok) return@BlockParser result1.cast()
 
     val result2 = other.apply(result1.remainder)
+    if (unique && result2 is Result.Failure) return@BlockParser result2.error()
+
+    result2
+}
+
+infix fun <R : Reader<R, *>, A, B> Parser<R, A>.before(other: Parser<R, B>) = BlockParser<R, A>(unique || other.unique) { input ->
+    val result1 = this.apply(input)
+    if (result1 !is Result.Ok) return@BlockParser result1.cast()
+
+    val result2 = other.apply(result1.remainder)
+    if (unique && result2 is Result.Failure) return@BlockParser result2.error()
     if (result2 !is Result.Ok) return@BlockParser result2.cast()
 
     Result.Ok(result1.matched, result1.index, result2.remainder)
 }
 
-infix fun <R : Reader<R, *>, A, B> Parser<R, A>.map(map: (A) -> B) = BlockParser<R, B> { input ->
+infix fun <R : Reader<R, *>, A, B> Parser<R, A>.map(map: (A) -> B) = BlockParser<R, B>(unique) { input ->
     this.apply(input).map(map)
 }
 
-infix fun <R : Reader<R, *>, A> Parser<R, A>.also(also: (A) -> Unit) = BlockParser<R, A> { input ->
+infix fun <R : Reader<R, *>, A> Parser<R, A>.also(also: (A) -> Unit) = BlockParser<R, A>(unique) { input ->
     this.apply(input).also(also)
 }
 
-fun <R: Reader<R, *>, A, B, C>Parser<R, A>.between(left: Parser<R, B>, right: Parser<R, C>) = BlockParser<R, A> {
+fun <R : Reader<R, *>, A, B, C> Parser<R, A>.between(left: Parser<R, B>, right: Parser<R, C>) = BlockParser<R, A>(left.unique || unique || right.unique) {
     input ->
     val result1 = left.apply(input)
     if (result1 !is Result.Ok) return@BlockParser result1.cast()
@@ -68,10 +73,10 @@ fun <R: Reader<R, *>, A, B, C>Parser<R, A>.between(left: Parser<R, B>, right: Pa
 
 fun <R : Reader<R, *>, A> oneOf(vararg parsers: Parser<R, A>) = oneOf(listOf(*parsers))
 
-fun <R : Reader<R, *>, A> oneOf(parsers: List<Parser<R, A>>) = BlockParser<R, A> { input ->
+fun <R : Reader<R, *>, A> oneOf(parsers: List<Parser<R, A>>) = BlockParser<R, A>(parsers.map { it.unique }.reduce { acc, unique -> acc && unique }) { input ->
     var bestResult: Result<R, A>? = null
 
-    require(parsers.isNotEmpty()) { "Must have at least one choice"}
+    require(parsers.isNotEmpty()) { "Must have at least one choice" }
 
     parsers.forEach {
         val result = it.apply(input)
@@ -85,11 +90,11 @@ fun <R : Reader<R, *>, A> oneOf(parsers: List<Parser<R, A>>) = BlockParser<R, A>
     bestResult!!
 }
 
-fun <R: Reader<R, *>, A> ref(block: () -> Parser<R, A>) = BlockParser<R, A> { input ->
+fun <R : Reader<R, *>, A> ref(block: () -> Parser<R, A>) = BlockParser<R, A>(false) { input ->
     block().apply(input)
 }
 
-fun <R: Reader<R, *>, A> optional(parser: Parser<R, A>) = BlockParser<R, A?> { input ->
+fun <R : Reader<R, *>, A> optional(parser: Parser<R, A>) = BlockParser<R, A?>(false) { input ->
     parser.apply(input).let {
         when (it) {
             is Result.Failure -> Result.Ok(null, input.index, input)
@@ -98,8 +103,9 @@ fun <R: Reader<R, *>, A> optional(parser: Parser<R, A>) = BlockParser<R, A?> { i
     }
 }
 
+fun <R : Reader<R, *>, A> skip(parser: Parser<R, A>) = parser map { Unit }
 
-infix fun <R: Reader<R, *>, A> Parser<R, A?>.prepended(other: Parser<R, List<A>>) = BlockParser<R, List<A>> { input ->
+infix fun <R : Reader<R, *>, A> Parser<R, A?>.prepended(other: Parser<R, List<A>>) = BlockParser<R, List<A>>(this.unique || other.unique) { input ->
     val result1 = this.apply(input)
     if (result1 !is Result.Ok) return@BlockParser result1.cast()
 
@@ -115,7 +121,7 @@ infix fun <R: Reader<R, *>, A> Parser<R, A?>.prepended(other: Parser<R, List<A>>
     Result.Ok(value, result1.index, result2.remainder)
 }
 
-fun <R: Reader<R, *>, A> repeat(times: Int, parser: Parser<R, A>) = BlockParser<R, List<A>> { input ->
+fun <R : Reader<R, *>, A> repeat(times: Int, parser: Parser<R, A?>) = BlockParser<R, List<A>>(false) { input ->
     val list = LinkedList<A>()
     var remainder = input
 
@@ -124,24 +130,24 @@ fun <R: Reader<R, *>, A> repeat(times: Int, parser: Parser<R, A>) = BlockParser<
         if (result !is Result.Ok) return@BlockParser result.cast()
 
         remainder = result.remainder
-        list.add(result.matched)
+        result.matched?.let { list.add(it) }
     }
 
     Result.Ok(Collections.unmodifiableList(list), input.index, remainder)
 }
 
-fun <R: Reader<R, *>, A> atLeast(times: Int, parser: Parser<R, A>) = BlockParser<R, List<A>> { input ->
+fun <R : Reader<R, *>, A> atLeast(times: Int, parser: Parser<R, A?>) = BlockParser<R, List<A>>(false) { input ->
     val result1 = repeat(times, parser).apply(input)
     if (result1 !is Result.Ok) return@BlockParser result1.cast()
 
     var (list, _, remainder) = result1
     list = LinkedList<A>(list)
 
-    loop@ while(true) {
+    loop@ while (true) {
         val result = parser.apply(remainder)
 
         when (result) {
-            is Result.Ok -> list.add(result.matched)
+            is Result.Ok -> if (result.matched != null) list.add(result.matched)
             is Result.Failure -> break@loop
             is Result.Error -> return@BlockParser result.cast()
         }
@@ -152,5 +158,5 @@ fun <R: Reader<R, *>, A> atLeast(times: Int, parser: Parser<R, A>) = BlockParser
     Result.Ok(Collections.unmodifiableList(list), input.index, remainder)
 }
 
-fun <R: Reader<R, *>, A> some(parser: Parser<R, A>) = atLeast(0, parser)
-fun <R: Reader<R, *>, A> many(parser: Parser<R, A>) = atLeast(1, parser)
+fun <R : Reader<R, *>, A> some(parser: Parser<R, A?>) = atLeast(0, parser)
+fun <R : Reader<R, *>, A> many(parser: Parser<R, A?>) = atLeast(1, parser)

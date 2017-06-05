@@ -21,6 +21,15 @@ class TransactionSpec : Spek({
             result.description shouldEqualTo "Grace Lutheran Church"
         }
 
+        it("should parse a description with a (") {
+            val result = JournalParser.parse(JournalParser.transaction, "2017/05/07 * ( Somewhere fun")
+
+            result.date.toString("yyyy/MM/dd") shouldEqualTo "2017/05/07"
+            result.date2.shouldBeNull()
+            result.code.shouldBeNull()
+            result.description shouldEqualTo "( Somewhere fun"
+        }
+
         it("should parse a transaction header with a following comment") {
             val result = JournalParser.parse(JournalParser.transaction,
                     """
@@ -34,6 +43,24 @@ class TransactionSpec : Spek({
             result.code.shouldBeNull()
             result.description shouldEqualTo "Options for Women"
             result.comment shouldEqualTo "First line\nDonated to Gabrielle Aschbrenner's pro-life fundraiser"
+        }
+
+        it("should parse a full transaction") {
+            val result = JournalParser.parse(JournalParser.transaction,
+                    """
+                    |2017/05/03 * Options for Women
+                    |    ; Donated to Gabrielle Aschbrenner's pro-life fundraiser
+                    |    Expenses:Giving:Charity                            $ 30.00
+                    |    Assets:Checking
+                    |
+                    """.trimMargin())
+
+            result.date.toString("yyyy/MM/dd") shouldEqualTo "2017/05/03"
+            result.date2.shouldBeNull()
+            result.code.shouldBeNull()
+            result.description shouldEqualTo "Options for Women"
+            result.comment shouldEqualTo "Donated to Gabrielle Aschbrenner's pro-life fundraiser"
+            result.postings.size shouldEqualTo 2
         }
     }
 })
