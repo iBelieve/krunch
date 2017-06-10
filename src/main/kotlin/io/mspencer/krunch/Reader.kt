@@ -37,13 +37,19 @@ interface Reader<Self : Reader<Self, T>, T : Any> {
     }
 
     fun <A : T> take(expected: A): Result<Self, A> {
-        return next().let {
-            when (it) {
-                is Result.Ok -> when (it.matched) {
-                    expected -> it.cast()
-                    else -> fail("Expected '$expected', got: '${it.matched}")
-                }
-                else -> it.cast()
+        if (atEnd) {
+            return fail("Expected '$expected' before end of file!")
+        } else {
+            val next = first ?: if (atEnd) {
+                return fail("Expected '$expected' before end of file!")
+            } else {
+                return error("Unexpected null input!")
+            }
+
+            if (next == expected) {
+                return ok(next as A, index + 1)
+            } else {
+                return fail("Expected '$expected', got: '$next")
             }
         }
     }

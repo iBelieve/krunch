@@ -36,3 +36,10 @@ infix fun <R : Reader<R, *>, T, A, B, C, D, E, F, G>
             it.first.first.first.first.second, it.first.first.first.second, it.first.first.second, it.first.second,
             it.second)
 }
+
+infix fun <R : Reader<R, *>, T, A, B, C, D, E, F, G, H>
+        Parser<R, Pair<Pair<Pair<Pair<Pair<Pair<Pair<A, B>, C>, D>, E>, F>, G>, H>>.flatMap(block: (A, B, C, D, E, F, G, H) -> T) = map {
+    block(it.first.first.first.first.first.first.first, it.first.first.first.first.first.first.second,
+            it.first.first.first.first.first.second, it.first.first.first.first.second, it.first.first.first.second,
+            it.first.first.second, it.first.second, it.second)
+}

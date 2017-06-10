@@ -2,6 +2,10 @@ package io.mspencer.ledger
 
 import io.mspencer.krunch.*
 import io.mspencer.ledger.extensions.parseBigDecimal
+import io.mspencer.ledger.models.Amount
+import io.mspencer.ledger.models.CommoditySide
+import io.mspencer.ledger.models.Price
+import io.mspencer.ledger.models.Status
 import khronos.toDate
 import java.util.*
 
@@ -82,7 +86,7 @@ object JournalParser : RegexParsers<JournalAST>() {
     //</editor-fold>
 
     //<editor-fold desc="Transaction parsing">
-    val code = between('(', ')')
+    val code = between('(', ')', unique = false)
 
     val description = until(';', '\n')
 
@@ -90,13 +94,13 @@ object JournalParser : RegexParsers<JournalAST>() {
 
     val balance = '=' then amount
 
-    val posting = indent then status and accountName and optional(amount) and optional(balance) and followingComment flatMap ::PostingAST
+    val posting = indent then region(status and accountName and optional(amount) and optional(balance) and followingComment) flatMap ::PostingAST
 
     val postings = some(posting)
 
-    val transaction = datePair and status and optional(code) and description and followingComment and postings flatMap ::TransactionAST
+    val transaction = region(datePair and status and optional(code) and description and followingComment and postings) flatMap ::TransactionAST
 
-    val periodicTransaction = '~' then restOfLine and postings flatMap ::PeriodicTransactionAST
+    val periodicTransaction = region('~' then restOfLine and postings) flatMap ::PeriodicTransactionAST
     //</editor-fold>
 
     val unexpectedIndent = indent then error("Unexpected indent")

@@ -4,6 +4,10 @@ abstract class CharParsers : Parsers() {
     open val skipWhitespace = true
     open val isWhitespace: (Char) -> Boolean = Char::isWhitespace
 
+    val position = BlockParser<CharReader, Position>(false) { input ->
+        Result.Ok(input.position, input.index, input)
+    }
+
     val indent = BlockParser<CharReader, Int>(false) { input ->
         input.take("[\t ]+".toRegex()).map { it.value.length } //.also { println("Took indent: $it") }
     }
@@ -25,26 +29,34 @@ abstract class CharParsers : Parsers() {
     fun optional(char: Char) = optional(literal(char))
     fun optional(string: String) = optional(literal(string))
 
-    fun until(vararg chars: Char) = chars
+    fun <A> region(target: Parser<CharReader, A>) = BlockParser<CharReader, Pair<A, Region>>(target.unique) { input ->
+        val result1 = target.apply(input)
+        if (result1 !is Result.Ok) return@BlockParser result1.cast()
+
+        Result.Ok(Pair(result1.matched, Region(result1.index, result1.remainder.index, input.source)),
+                result1.index, result1.remainder)
+    }
+
+    fun until(vararg chars: Char, unique: Boolean = true) = chars
             .map { it.toString() }.joinToString("")
             .let { Regex.escape(it) }
             //.also { println("Until regex: [^$it]+") }
-            .let { literal("[^$it]+".toRegex()) }
+            .let { literal("[^$it]+".toRegex(), unique = unique) }
             .map { if (skipWhitespace) it.trim() else it }
-            //.also { println("Regex matched: $it") }
+    //.also { println("Regex matched: $it") }
 
-    fun <A> Parser<CharReader, A>.between(left: Char, right: Char) = literal(left) then this before literal(right)
-    fun <A> Parser<CharReader, A>.between(left: String, right: String) = literal(left) then this before literal(right)
+    fun <A> Parser<CharReader, A>.between(left: Char, right: Char, unique: Boolean = true) = literal(left, unique = unique) then this before literal(right)
+    fun <A> Parser<CharReader, A>.between(left: String, right: String, unique: Boolean = true) = literal(left, unique = unique) then this before literal(right)
 
-    fun between(left: Char, right: Char) = until(right).between(left, right)
+    fun between(left: Char, right: Char, unique: Boolean = true) = until(right, unique = unique).between(left, right, unique = unique)
 
-    fun parens() = between('(', ')')
-    fun brackets() = between('[', ']')
-    fun braces() = between('{', '}')
+    fun parens(unique: Boolean = true) = between('(', ')', unique = unique)
+    fun brackets(unique: Boolean = true) = between('[', ']', unique = unique)
+    fun braces(unique: Boolean = true) = between('{', '}', unique = unique)
 
-    fun <A> parens(parser: Parser<CharReader, A>) = parser.between('(', ')')
-    fun <A> brackets(parser: Parser<CharReader, A>) = parser.between('[', ']')
-    fun <A> braces(parser: Parser<CharReader, A>) = parser.between('{', '}')
+    fun <A> parens(parser: Parser<CharReader, A>, unique: Boolean = true) = parser.between('(', ')', unique = unique)
+    fun <A> brackets(parser: Parser<CharReader, A>, unique: Boolean = true) = parser.between('[', ']', unique = unique)
+    fun <A> braces(parser: Parser<CharReader, A>, unique: Boolean = true) = parser.between('{', '}', unique = unique)
 
     infix fun <A> Char.then(parser: Parser<CharReader, A>) = literal(this) then parser
     infix fun <A> String.then(parser: Parser<CharReader, A>) = literal(this) then parser
