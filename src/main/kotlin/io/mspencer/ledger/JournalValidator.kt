@@ -60,7 +60,7 @@ object JournalValidator {
                     }
                 }
 
-        return ast.run { Transaction(date, date2, status, code, description, postings) }
+        return ast.run { Transaction(date, date2, status, code, description, comment, postings) }
     }
 
     fun process(ast: JournalAST): Journal {
