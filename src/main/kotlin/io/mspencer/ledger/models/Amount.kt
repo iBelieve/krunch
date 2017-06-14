@@ -57,9 +57,10 @@ data class Amount(val commodity: String, val quantity: BigDecimal = BigDecimal.Z
 
 data class MixedAmount(val amounts: Map<String, Amount> = mapOf()) {
     val isZero = amounts.filterNot { it.value.isZero }.isEmpty()
+    val isPositive = amounts.filterNot { it.value.quantity > BigDecimal.ZERO }.isEmpty()
 
     constructor(amount: Amount) : this(listOf(amount))
-    constructor(amounts: List<Amount>) : this(amounts.groupBy { it.commodity }.mapValues { it.value.reduce { acc, amount -> acc + amount.quantity }})
+    constructor(amounts: List<Amount>) : this(amounts.groupBy { it.commodity }.mapValues { it.value.reduce { acc, amount -> acc + amount.quantity } })
 
     fun map(block: (Amount) -> Amount) = this.copy(amounts = amounts.mapValues { block(it.value) })
 
@@ -74,6 +75,7 @@ data class MixedAmount(val amounts: Map<String, Amount> = mapOf()) {
 
         return MixedAmount(amounts + replacements)
     }
+
     operator fun plus(amount: Amount): MixedAmount {
         val replacement = amount.commodity to (amounts[amount.commodity]?.plus(amount) ?: amount)
 
