@@ -2,7 +2,7 @@ package io.mspencer.krunch.samples.calculator
 
 import io.mspencer.krunch.*
 
-object OneStepCalculatorParser : CharParsers() {
+object OneStepCalculatorParser : RegexParsers<Double>() {
     val expressionRef: Parser<CharReader, Double> = ref { expression }
 
     val number = literal("[\\d-.]+".toRegex()) map { it.toDouble() }
@@ -30,16 +30,5 @@ object OneStepCalculatorParser : CharParsers() {
         }
     }
 
-    val goal = expression
-
-    fun parse(source: String): Double {
-        val input = CharReader(source)
-        val result = (goal before endOfFile).apply(input)
-
-        when (result) {
-            is Result.Ok -> return result.matched
-            is Result.Failure -> throw Exception("Failure: " + result.message)
-            is Result.Error -> throw Exception("ERROR: " + result.message)
-        }
-    }
+    override val goal = expression
 }
