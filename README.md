@@ -1,13 +1,38 @@
 Krunch
 ======
 
-Parser/Combinator framework for Kotlin.
+Parser/Combinator framework for Kotlin, inspired by [CakeParse](https://github.com/sargunster/cakeparse),
+[Scala Parser Combinators](https://github.com/scala/scala-parser-combinators), and 
+[Parsec](https://wiki.haskell.org/Parsec).
 
 ### Installation
 
-Add the following line to your `build.gradle`:
+Add this to your root `build.gradle`:
 
-    compile 'com.roughike:bottom-bar:2.3.1'
+    allprojects {
+        repositories {
+            ...
+            maven { url 'https://jitpack.io' }
+        }
+    }
+
+Add the following dependency:
+
+    dependencies {
+        compile 'com.github.ibelieve:krunch:-SNAPSHOT'
+    }
+   
+See https://jitpack.io/ for more details.
+    
+### Features
+
+ * No separate lexing step by default, allowing for context-sensitive tokens. A separate lexing step can be built, 
+   if desired.
+ * Offers simple infix methods for combinators, such as `and`, `or`, `then`, and `before`, as well as functions like
+   `optional`, `oneOf`, `atLeast`, `some`, and `many`.
+ * Create tokens from strings, characters, and regexes using `literal`, `match`, or `oneOf`.
+ * Optionally skip whitespace to simplify parsers.
+ * Easily map deeply nested `Pair` results from `and` to objects using `flatMap` in a type-safe manner. 
     
 ### Sample Parsers
 
