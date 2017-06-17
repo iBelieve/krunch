@@ -83,4 +83,6 @@ data class MixedAmount(val amounts: Map<String, Amount> = mapOf()) {
     }
 
     operator fun unaryMinus() = map { -it }
+
+    override fun toString() = amounts.values.joinToString("\n")
 }
